@@ -1,12 +1,94 @@
-:root{--bg:#0f1720;--card:#0b1220;--text:#e6eef8;--muted:#9fb0c8;}
-body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,Arial;}
-header{display:flex;justify-content:space-between;align-items:center;padding:18px;border-bottom:1px solid rgba(255,255,255,0.03)}
-h1{margin:0;font-size:18px}
-.controls{display:flex;gap:8px;align-items:center}
-select,button{padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:#071024;color:var(--text)}
-main{padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
-.card{background:var(--card);padding:12px;border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,0.6)}
-.league{font-size:12px;color:var(--muted);margin-bottom:6px}
-.meta{font-size:13px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
-.card a{display:inline-block;margin-top:8px;color:#9bd1ff;text-decoration:none}
-.info{color:var(--muted)}
+:root {
+  --bg: #0d1117;
+  --card: #161b22;
+  --text: #e6edf3;
+  --muted: #9ba1a6;
+  --accent: #58a6ff;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+header {
+  padding: 16px;
+  border-bottom: 1px solid #222;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+h1 { margin: 0; font-size: 20px; }
+
+.controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+select, button {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+main {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  padding: 20px;
+}
+
+.card {
+  background: var(--card);
+  padding: 14px;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.league {
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+h2 {
+  font-size: 16px;
+  margin: 6px 0;
+}
+
+.meta {
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+a {
+  margin-top: 6px;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover { text-decoration: underline; }
+
+.info {
+  color: var(--muted);
+  font-style: italic;
+}
+
+footer {
+  text-align: center;
+  padding: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  border-top: 1px solid #222;
+}
