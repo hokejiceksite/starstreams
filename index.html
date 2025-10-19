@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Zítřejší TOP zápasy</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Zítřejší TOP zápasy z Livesportu</h1>
+    <div class="controls">
+      <select id="day">
+        <option value="tomorrow">Zítřek</option>
+        <option value="dayafter">Pozítří</option>
+      </select>
+      <button id="refresh">Aktualizovat</button>
+    </div>
+  </header>
+
+  <main id="list">
+    <p class="info">Načítám nejlepší zápasy…</p>
+  </main>
+
+<script>
+const API = "http://localhost:3030/top-matches"; // změň pokud nasadíš jinam
+
+async function load() {
+  const day = document.getElementById("day").value;
+  const container = document.getElementById("list");
+  container.innerHTML = `<p class="info">Hledám nejzajímavější zápasy pro ${day}…</p>`;
+  try {
+    const r = await fetch(API + "?day=" + day);
+    const j = await r.json();
+    if (!j.top || !j.top.length) {
+      container.innerHTML = `<p class="info">Žádné zápasy v datech (fallback nebo scraping nevrátil data).</p>`;
+      return;
+    }
+    container.innerHTML = j.top.map(m => `
+      <article class="card">
+        <div class="league">${m.league}</div>
+        <h2>${m.home} — ${m.away}</h2>
+        <div class="meta">
+          <time>${new Date(m.date).toLocaleString("cs-CZ")}</time>
+          <span>${m.place||"—"}</span>
+          <span>${m.tv||"—"}</span>
+        </div>
+        <a href="${m.link||'#'}" target="_blank">Detaily na Livesport</a>
+      </article>
+    `).join("");
+  } catch (e) {
+    container.innerHTML = `<p class="info">Chyba: ${e.message}</p>`;
+  }
+}
+
+document.getElementById("refresh").addEventListener("click", load);
+document.getElementById("day").addEventListener("change", load);
+load();
+</script>
+</body>
+</html>
