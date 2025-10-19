@@ -1,0 +1,23 @@
+{
+  "matches": [
+    {
+      "league":"TELH",
+      "home":"HC Kometa Brno",
+      "away":"HC Sparta Praha",
+      "date":"2025-10-20T18:30:00+01:00",
+      "place":"Brno",
+      "tv":"TELH / O2 TV",
+      "link":"https://www.livesport.cz/match/..."
+    },
+    {
+      "league":"Premier League",
+      "home":"Manchester United",
+      "away":"Chelsea",
+      "date":"2025-10-20T16:00:00+01:00",
+      "place":"Old Trafford",
+      "tv":"Sky Sports",
+      "link":"https://www.livesport.cz/match/..."
+    }
+    // ... další
+  ]
+}
