@@ -1,0 +1,26 @@
+name: Daily data update
+on:
+  schedule:
+    - cron: '0 1 * * *' # každý den 01:00 UTC (uprav dle potřeby)
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install deps
+        run: npm ci
+      - name: Run scraper to produce data.json
+        run: node scripts/fetch_and_write.js
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "actions@github.com"
+          git add data.json
+          git commit -m "Daily update" || echo "no changes"
+          git push
