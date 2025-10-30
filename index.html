@@ -69,13 +69,21 @@ const firebaseConfig = {
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // definice kategorií a jejich zobrazených názvů
-    const CATS = [
-      {key:"hokej", label:"Hokej"},
-      {key:"fotbal", label:"Fotbal"},
-      {key:"basket", label:"Basketbal"},
-      {key:"ostatni", label:"Ostatní"}
-    ];
+<div class="row">
+  <div>
+    <label>Čas začátku (např. 17:30)</label>
+    <input id="start" placeholder="17:30">
+  </div>
+  <div>
+    <label>Kategorie</label>
+    <select id="category">
+      <option value="hokej">Hokej</option>
+      <option value="fotbal">Fotbal</option>
+      <option value="basket">Basketbal</option>
+      <option value="ostatni">Ostatní</option>
+    </select>
+  </div>
+</div>
 
     // modal player
     const modal = document.getElementById('modal');
