@@ -94,14 +94,15 @@
   import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
   // 🔧 stejné config jako v index.html
-  const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "SENDER_ID",
-    appId: "APP_ID"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyDaWJkHVYiYw2ZbXD6QwWDGFEhmID00B60",
+  authDomain: "livehuben.firebaseapp.com",
+  projectId: "livehuben",
+  storageBucket: "livehuben.firebasestorage.app",
+  messagingSenderId: "409372302743",
+  appId: "1:409372302743:web:3c10fd9542bb5d88f478d2",
+  measurementId: "G-CWV8FZ3DZN"
+};
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
