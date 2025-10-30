@@ -47,14 +47,14 @@
         </div>
         <div>
           <label>Poskytovatel / kanál</label>
-          <input id="provider" placeholder="DAZN / FOX / YouTube">
+          <input id="provider" placeholder="O2 TV / ČT Sport">
         </div>
       </div>
 
       <div class="row">
         <div>
-          <label>Čas začátku</label>
-          <input id="start" placeholder="2025-11-28 17:30">
+          <label>Čas začátku (např. 17:30)</label>
+          <input id="start" placeholder="17:30">
         </div>
         <div>
           <label>Kategorie</label>
@@ -90,136 +90,77 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-  import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
   import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
-  // TODO: stejné config jako na index.html
-const firebaseConfig = {
-  apiKey: "AIzaSyDaWJkHVYiYw2ZbXD6QwWDGFEhmID00B60",
-  authDomain: "livehuben.firebaseapp.com",
-  projectId: "livehuben",
-  storageBucket: "livehuben.firebasestorage.app",
-  messagingSenderId: "409372302743",
-  appId: "1:409372302743:web:3c10fd9542bb5d88f478d2",
-  measurementId: "G-CWV8FZ3DZN"
-};
+  // 🔧 stejné config jako v index.html
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "SENDER_ID",
+    appId: "APP_ID"
+  };
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   const auth = getAuth(app);
+  const $ = id=>document.getElementById(id);
 
-  const $ = (id)=>document.getElementById(id);
-
-  // auth UI
-  onAuthStateChanged(auth, (user)=>{
+  onAuthStateChanged(auth, user=>{
     if(user){ $("authBox").style.display="none"; $("tools").style.display="block"; }
     else { $("authBox").style.display="block"; $("tools").style.display="none"; }
   });
+
   $("btnLogin").onclick = async ()=>{
     try{ await signInWithEmailAndPassword(auth, $("email").value, $("password").value); }
-    catch(e){ alert("Přihlášení selhalo: " + e.message); }
+    catch(e){ alert("Přihlášení selhalo: "+e.message); }
   };
   $("btnLogout").onclick = ()=> signOut(auth);
 
-  // helper – parsování data/času tolerantně
-  function toTimestamp(v){
-    if(!v) return null;
-    const parsed = Date.parse(v.replace(" ", "T"));
-    if(isNaN(parsed)) return null;
-    return Timestamp.fromDate(new Date(parsed));
-  }
-
-  // create
   $("btnSave").onclick = async ()=>{
     const data = {
       title: $("title").value.trim(),
       provider: $("provider").value.trim(),
-      start: toTimestamp($("start").value.trim()),
+      start: $("start").value.trim(),
       src: $("src").value.trim(),
       thumb: $("thumb").value.trim(),
       category: $("category").value,
       order: Date.now(),
       createdAt: serverTimestamp()
     };
-    if(!data.title || !data.src){ alert("Vyplňte alespoň Název a Odkaz na přenos."); return; }
-    try{
-      await addDoc(collection(db,"streams"), data);
-      ["title","provider","start","src","thumb"].forEach(id=>$(id).value="");
-      alert("Uloženo");
-    }catch(e){ alert("Chyba uložení: " + e.message); }
+    if(!data.title || !data.src){ alert("Vyplňte alespoň Název a Odkaz."); return; }
+    await addDoc(collection(db,"streams"), data);
+    ["title","provider","start","src","thumb"].forEach(id=>$(id).value="");
+    alert("Uloženo");
   };
 
-  // live list
-  const qStreams = query(collection(db,"streams"), orderBy("order","asc"), orderBy("start","asc"));
-  onSnapshot(qStreams, (snap)=>{
+  const qStreams = query(collection(db,"streams"), orderBy("order","asc"));
+  onSnapshot(qStreams, snap=>{
     const list = $("list");
     if(snap.empty){ list.innerHTML = `<div class="muted">Žádné položky</div>`; return; }
-    list.innerHTML = "";
+    list.innerHTML="";
     snap.forEach(docu=>{
       const d = docu.data();
       const li = document.createElement("div");
-      li.className = "item";
-      li.innerHTML = `
+      li.className="item";
+      li.innerHTML=`
         <div class="grow">
-          <div style="font-weight:700">${escapeHtml(d.title)} <span class="pill">${escapeHtml(labelOf(d.category))}</span></div>
-          <div class="muted">${escapeHtml(d.provider||"")} ${d.start?("• "+formatTime(d.start)):""}</div>
-          ${d.thumb?`<div style="margin-top:8px"><img src="${d.thumb}" style="max-width:220px;border-radius:8px;border:1px solid #1f2937"></div>`:""}
-          <div class="muted" style="margin-top:6px;word-break:break-all">${escapeHtml(d.src)}</div>
+          <div style="font-weight:700">${escapeHtml(d.title)} <span class="pill">${escapeHtml(d.category||"")}</span></div>
+          <div class="muted">${escapeHtml(d.provider||"")} ${d.start?("• "+d.start):""}</div>
+          ${d.thumb?`<img src="${d.thumb}" style="max-width:200px;border-radius:8px;margin-top:6px;">`:""}
+          <div class="muted" style="word-break:break-all">${escapeHtml(d.src)}</div>
         </div>
         <div class="controls">
-          <button class="ghost" data-act="up">↑</button>
-          <button class="ghost" data-act="down">↓</button>
-          <button class="ghost" data-act="edit">Upravit</button>
           <button class="ghost" data-act="delete">Smazat</button>
         </div>`;
-      li.querySelector('[data-act="delete"]').onclick = ()=> del(docu.id);
-      li.querySelector('[data-act="edit"]').onclick = ()=> fillForm(docu.id, d);
-      li.querySelector('[data-act="up"]').onclick = ()=> reOrder(docu.id, d.order - 1);
-      li.querySelector('[data-act="down"]').onclick = ()=> reOrder(docu.id, d.order + 1);
+      li.querySelector('[data-act="delete"]').onclick = ()=> deleteDoc(doc(db,"streams",docu.id));
       list.appendChild(li);
     });
   });
 
-  function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;' }[m]))}
-  function labelOf(cat){ return ({hokej:"Hokej", fotbal:"Fotbal", basket:"Basketbal", ostatni:"Ostatní"})[cat] || "Ostatní"; }
-  function formatTime(ts){ try{ const d = ts.seconds? new Date(ts.seconds*1000): new Date(ts); return d.toLocaleString(); }catch{return ""} }
-
-  async function del(id){
-    if(!confirm("Smazat přenos?")) return;
-    await deleteDoc(doc(db,"streams",id));
-  }
-  function fillForm(id, d){
-    $("title").value = d.title||"";
-    $("provider").value = d.provider||"";
-    $("start").value = d.start ? formatTime(d.start) : "";
-    $("src").value = d.src||"";
-    $("thumb").value = d.thumb||"";
-    $("category").value = d.category||"ostatni";
-    $("btnSave").textContent = "Uložit změny";
-    $("btnSave").onclick = async ()=>{
-      const up = {
-        title: $("title").value.trim(),
-        provider: $("provider").value.trim(),
-        start: toTimestamp($("start").value.trim()),
-        src: $("src").value.trim(),
-        thumb: $("thumb").value.trim(),
-        category: $("category").value
-      };
-      if(!up.title || !up.src){ alert("Název a Odkaz jsou povinné."); return; }
-      await updateDoc(doc(db,"streams",id), up);
-      ["title","provider","start","src","thumb"].forEach(id=>$(id).value="");
-      $("btnSave").textContent = "Přidat přenos";
-      $("btnSave").onclick = null; $("btnSave").onclick = async ()=>{ /* reset na create */ };
-      location.reload(); // jednoduché vrácení do create režimu
-    };
-  }
-  async function reOrder(id, newOrder){ await updateDoc(doc(db,"streams",id), { order: newOrder }); }
-  $("btnResequence").onclick = async ()=>{
-    // přepočítá pořadí (1,2,3…)
-    // stačí znovu načíst a zapsat postupně
-    // (pro jednoduchost tu necháváme na ruční „nahoru/dolů“; toto tlačítko můžete nepoužívat)
-    alert("Pořadí řaďte šipkami ↑/↓ u položek.");
-  };
+  const escapeHtml=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]));
 </script>
 </body>
 </html>
