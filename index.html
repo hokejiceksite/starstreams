@@ -1,31 +1,133 @@
 <!doctype html>
 <html lang="cs">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Zítřejší TOP zápasy</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>LiveHub – Přenosy</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/clappr@latest/dist/clappr.min.js"></script>
+<style>
+  :root{--bg:#0d1117;--card:#111827;--muted:#9aa3af;--line:#1f2937;--accent:#2aa7ff;}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,Arial;background:var(--bg);color:#e6eef6}
+  header{padding:18px 28px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center}
+  .logo{font-weight:700;font-size:22px;color:var(--accent)}
+  main{padding:24px}
+  h2{margin:22px 0 12px 0}
+  .section{margin-bottom:24px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;transition:transform .12s}
+  .card:hover{transform:translateY(-3px)}
+  .thumb{height:140px;background:#000;display:flex;align-items:center;justify-content:center}
+  .thumb img{width:100%;height:100%;object-fit:cover}
+  .body{padding:12px}
+  .title{font-weight:700;margin-bottom:4px}
+  .meta{font-size:13px;color:var(--muted);margin-bottom:8px}
+  .btn{background:var(--accent);color:#001018;padding:8px 12px;border:none;border-radius:8px;font-weight:700;cursor:pointer}
+  .empty{color:var(--muted);font-size:14px;border:1px dashed var(--line);padding:14px;border-radius:12px}
+  /* Modal */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:50}
+  .modal.open{display:flex}
+  .player-wrap{width:92%;max-width:1100px;height:60vh;position:relative}
+  .close-x{position:absolute;right:8px;top:8px;background:rgba(255,255,255,0.1);padding:4px 8px;border-radius:6px;cursor:pointer}
+</style>
 </head>
 <body>
   <header>
-    <h1>Zítřejší TOP zápasy z Livesportu</h1>
-    <div class="controls">
-      <select id="day">
-        <option value="tomorrow">Zítřek</option>
-        <option value="dayafter">Pozítří</option>
-      </select>
-      <button id="refresh">🔄 Aktualizovat</button>
-    </div>
+    <div class="logo">LiveHub</div>
+    <div style="color:#9aa3af">Veřejný přehled</div>
   </header>
 
-  <main id="list">
-    <p class="info">Načítám nejlepší zápasy…</p>
+  <main>
+    <div id="sections"></div>
   </main>
 
-  <footer>
-    <p>Zdroj dat: demo Livesport (automatická denní obnova)</p>
-  </footer>
+  <!-- Modal player -->
+  <div id="modal" class="modal" aria-hidden="true">
+    <div class="player-wrap">
+      <div class="close-x" id="closePlayer">✕</div>
+      <div id="player"></div>
+    </div>
+  </div>
 
-  <script src="script.js"></script>
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+    // TODO: vyplňte své údaje z Firebase konzole
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "SENDER_ID",
+      appId: "APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // definice kategorií a jejich zobrazených názvů
+    const CATS = [
+      {key:"hokej", label:"Hokej"},
+      {key:"fotbal", label:"Fotbal"},
+      {key:"basket", label:"Basketbal"},
+      {key:"ostatni", label:"Ostatní"}
+    ];
+
+    // modal player
+    const modal = document.getElementById('modal');
+    const playerDiv = document.getElementById('player');
+    let player = null;
+    const openPlayer = (src)=>{
+      modal.classList.add('open');
+      if(player && player.destroy) player.destroy();
+      player = new Clappr.Player({ parent: playerDiv, source: src, autoPlay: true, width: "100%", height: "100%" });
+    };
+    document.getElementById('closePlayer').onclick = ()=>{ modal.classList.remove('open'); if(player) player.destroy(); };
+    modal.addEventListener('click', e=>{ if(e.target===modal){ modal.classList.remove('open'); if(player) player.destroy(); }});
+
+    // render sekcí – zobrazit jen kategorie s alespoň jedním přenosem
+    const sectionsEl = document.getElementById('sections');
+
+    function cardHtml(d){
+      return `
+        <div class="card">
+          <div class="thumb">${d.thumb ? `<img src="${d.thumb}" alt="">` : `<span style="color:#666">Bez náhledu</span>`}</div>
+          <div class="body">
+            <div class="title">${escapeHtml(d.title)}</div>
+            <div class="meta">${escapeHtml(d.provider || "")} ${d.start ? "• " + formatTime(d.start) : ""}</div>
+            <button class="btn" onclick='window._open("${encodeURIComponent(d.src)}")'>Přehrát</button>
+          </div>
+        </div>`;
+    }
+    window._open = (enc)=> openPlayer(decodeURIComponent(enc));
+
+    function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;' }[m]))}
+    function formatTime(ts){
+      try{
+        const dt = ts?.seconds ? new Date(ts.seconds*1000) : new Date(ts);
+        return dt.toLocaleString(undefined, { hour: '2-digit', minute:'2-digit', day:'2-digit', month:'2-digit' });
+      }catch{return ''}
+    }
+
+    // posloucháme Firestore (živá data)
+    const qStreams = query(collection(db,"streams"), orderBy("order", "asc"), orderBy("start","asc"));
+    onSnapshot(qStreams, (snap)=>{
+      const all = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      // group by category
+      sectionsEl.innerHTML = "";
+      CATS.forEach(cat=>{
+        const items = all.filter(x => (x.category||"ostatni") === cat.key);
+        if(items.length===0) return; // sekci nevypisuj
+        const grid = `<div class="grid">${items.map(cardHtml).join("")}</div>`;
+        sectionsEl.insertAdjacentHTML('beforeend', `<section class="section"><h2>${cat.label}</h2>${grid}</section>`);
+      });
+      if(!sectionsEl.innerHTML){
+        sectionsEl.innerHTML = `<div class="empty">Zatím žádné přenosy.</div>`;
+      }
+    });
+  </script>
 </body>
 </html>
