@@ -23,8 +23,9 @@
   .body{padding:12px}
   .title{font-weight:700;margin-bottom:4px}
   .meta{font-size:13px;color:var(--muted);margin-bottom:8px}
+  .timer{font-size:14px;color:#9aa3af;margin-bottom:6px}
   .btn{background:var(--accent);color:#001018;padding:8px 12px;border:none;border-radius:8px;font-weight:700;cursor:pointer}
-  .empty{color:var(--muted);font-size:14px;border:1px dashed var(--line);padding:14px;border-radius:12px}
+  .empty{color:var(--muted);font-size:14px;border:1px dashed var(--line);padding:14px;border-radius:12px;text-align:center}
   /* Modal */
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:50}
   .modal.open{display:flex}
@@ -55,37 +56,27 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
     import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-    // TODO: vyplňte své údaje z Firebase konzole
-const firebaseConfig = {
-  apiKey: "AIzaSyDaWJkHVYiYw2ZbXD6QwWDGFEhmID00B60",
-  authDomain: "livehuben.firebaseapp.com",
-  projectId: "livehuben",
-  storageBucket: "livehuben.firebasestorage.app",
-  messagingSenderId: "409372302743",
-  appId: "1:409372302743:web:3c10fd9542bb5d88f478d2",
-  measurementId: "G-CWV8FZ3DZN"
-};
+    // 🔧 Sem vlož své údaje z Firebase
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "SENDER_ID",
+      appId: "APP_ID"
+    };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-<div class="row">
-  <div>
-    <label>Čas začátku (např. 17:30)</label>
-    <input id="start" placeholder="17:30">
-  </div>
-  <div>
-    <label>Kategorie</label>
-    <select id="category">
-      <option value="hokej">Hokej</option>
-      <option value="fotbal">Fotbal</option>
-      <option value="basket">Basketbal</option>
-      <option value="ostatni">Ostatní</option>
-    </select>
-  </div>
-</div>
+    const CATS = [
+      {key:"hokej", label:"Hokej"},
+      {key:"fotbal", label:"Fotbal"},
+      {key:"basket", label:"Basketbal"},
+      {key:"ostatni", label:"Ostatní"}
+    ];
 
-    // modal player
+    // Přehrávač
     const modal = document.getElementById('modal');
     const playerDiv = document.getElementById('player');
     let player = null;
@@ -97,45 +88,54 @@ const firebaseConfig = {
     document.getElementById('closePlayer').onclick = ()=>{ modal.classList.remove('open'); if(player) player.destroy(); };
     modal.addEventListener('click', e=>{ if(e.target===modal){ modal.classList.remove('open'); if(player) player.destroy(); }});
 
-    // render sekcí – zobrazit jen kategorie s alespoň jedním přenosem
     const sectionsEl = document.getElementById('sections');
+    const escapeHtml = s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]));
+    window._open = enc => openPlayer(decodeURIComponent(enc));
 
     function cardHtml(d){
+      const timeLabel = d.start ? `🕓 ${escapeHtml(d.start)}` : "";
       return `
         <div class="card">
           <div class="thumb">${d.thumb ? `<img src="${d.thumb}" alt="">` : `<span style="color:#666">Bez náhledu</span>`}</div>
           <div class="body">
             <div class="title">${escapeHtml(d.title)}</div>
-            <div class="meta">${escapeHtml(d.provider || "")} ${d.start ? "• " + formatTime(d.start) : ""}</div>
+            <div class="meta">${escapeHtml(d.provider || "")} ${timeLabel}</div>
+            <div class="timer" id="timer-${d.id}"></div>
             <button class="btn" onclick='window._open("${encodeURIComponent(d.src)}")'>Přehrát</button>
           </div>
         </div>`;
     }
-    window._open = (enc)=> openPlayer(decodeURIComponent(enc));
 
-    function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;' }[m]))}
-    function formatTime(ts){
-      try{
-        const dt = ts?.seconds ? new Date(ts.seconds*1000) : new Date(ts);
-        return dt.toLocaleString(undefined, { hour: '2-digit', minute:'2-digit', day:'2-digit', month:'2-digit' });
-      }catch{return ''}
-    }
-
-    // posloucháme Firestore (živá data)
-    const qStreams = query(collection(db,"streams"), orderBy("order", "asc"), orderBy("start","asc"));
+    const qStreams = query(collection(db,"streams"), orderBy("order","asc"));
     onSnapshot(qStreams, (snap)=>{
       const all = snap.docs.map(d=>({id:d.id, ...d.data()}));
-      // group by category
       sectionsEl.innerHTML = "";
       CATS.forEach(cat=>{
         const items = all.filter(x => (x.category||"ostatni") === cat.key);
-        if(items.length===0) return; // sekci nevypisuj
+        if(items.length===0) return;
         const grid = `<div class="grid">${items.map(cardHtml).join("")}</div>`;
         sectionsEl.insertAdjacentHTML('beforeend', `<section class="section"><h2>${cat.label}</h2>${grid}</section>`);
       });
-      if(!sectionsEl.innerHTML){
-        sectionsEl.innerHTML = `<div class="empty">Zatím žádné přenosy.</div>`;
-      }
+      if(!sectionsEl.innerHTML) sectionsEl.innerHTML = `<div class="empty">Zatím žádné přenosy.</div>`;
+
+      // časovač
+      setInterval(()=>{
+        const now = new Date();
+        all.forEach(d=>{
+          const el = document.getElementById("timer-"+d.id);
+          if(!el || !d.start) return;
+          const [h,m] = d.start.split(":").map(Number);
+          if(isNaN(h)||isNaN(m)) return;
+          const target = new Date();
+          target.setHours(h,m,0,0);
+          const diff = target - now;
+          if(diff <= 0){ el.textContent = "🔴 Právě běží"; el.style.color="#ff6363"; return; }
+          const hh = Math.floor(diff/3600000);
+          const mm = Math.floor((diff%3600000)/60000);
+          const ss = Math.floor((diff%60000)/1000);
+          el.textContent = `⏱ Začíná za ${hh}h ${mm}m ${ss}s`;
+        });
+      },1000);
     });
   </script>
 </body>
